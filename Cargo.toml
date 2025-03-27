@@ -5,5 +5,6 @@ authors = ["R Neale mathsDOTearth"]
 edition = "2021"
 description = "A Marsaglia's universal random number generator."
 license = "MIT"
+repository = "https://github.com/mathsDOTearth/unirand"
 
 [dependencies]
