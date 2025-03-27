@@ -1,8 +1,9 @@
 [package]
 name = "unirand"
 version = "0.1.0"
+authors = ["R Neale mathsDOTearth"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A Marsaglia's universal random number generator."
+license = "MIT"
 
 [dependencies]
