@@ -1,7 +1,7 @@
 //! # Unirand Crate
 //!
 //! This crate implements Marsaglia's Universal Random Number Generator.
-//! https://www.sciencedirect.com/science/article/abs/pii/016771529090092L
+//! [More details on the original paper](https://www.sciencedirect.com/science/article/abs/pii/016771529090092L).
 //! 
 //! ## Overview
 //!
@@ -34,20 +34,28 @@
 //!
 //! See the documentation for individual functions and methods below for more details.
 
-const LEN_U: usize = 98; // Constant defining the length of the random values array.
+const LEN_U: usize = 98; // Length of the random values array.
 
-// A struct representing Marsaglia's Universal Random Number Generator.
-struct MarsagliaUniRng {
+/// A struct representing Marsaglia's Universal Random Number Generator.
+pub struct MarsagliaUniRng {
     uni_u: [f32; LEN_U], // Array holding the recent random numbers.
-    uni_c: f32, 		// Correction to avoid periodicity.
-    uni_cd: f32, 		// Correction delta value.
-    uni_cm: f32,		// Correction modulus.
-    uni_ui: usize,		// Current position in the random values array.
-    uni_uj: usize,
+    uni_c: f32,          // Correction to avoid periodicity.
+    uni_cd: f32,         // Correction delta value.
+    uni_cm: f32,         // Correction modulus.
+    uni_ui: usize,       // Current position in the random values array.
+    uni_uj: usize,       // Second index used for generating new numbers.
 }
 
 impl MarsagliaUniRng {
-// Constructor for the random number generator.
+    /// Creates a new instance of the RNG.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use unirand::MarsagliaUniRng;
+    ///
+    /// let rng = MarsagliaUniRng::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             uni_u: [0.0; LEN_U],
@@ -58,48 +66,60 @@ impl MarsagliaUniRng {
             uni_uj: 0,
         }
     }
-// Generate a new random float value between 0 and 1
-pub fn uni(&mut self) -> f32 {
-    let mut luni = self.uni_u[self.uni_ui] - self.uni_u[self.uni_uj];
-    if luni < 0.0 {
-        luni += 1.0;
-    }
-    self.uni_u[self.uni_ui] = luni;
+
+    /// Generates a new random float value between 0 and 1.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use unirand::MarsagliaUniRng;
+    ///
+    /// let mut rng = MarsagliaUniRng::new();
+    /// rng.rinit(170);
+    /// let number = rng.uni();
+    /// println!("Random number: {}", number);
+    /// ```
+    pub fn uni(&mut self) -> f32 {
+        let mut luni = self.uni_u[self.uni_ui] - self.uni_u[self.uni_uj];
+        if luni < 0.0 {
+            luni += 1.0;
+        }
+        self.uni_u[self.uni_ui] = luni;
+        
+        // Adjust indices for the next random number generation.
+        if self.uni_ui == 0 {
+            self.uni_ui = 97;
+        } else {
+            self.uni_ui -= 1;
+        }
+        if self.uni_uj == 0 {
+            self.uni_uj = 97;
+        } else {
+            self.uni_uj -= 1;
+        }
     
-// Adjust indices for the next random number generation.
-    if self.uni_ui == 0 {
-        self.uni_ui = 97;
-    } else {
-        self.uni_ui -= 1;
-    }
-    if self.uni_uj == 0 {
-        self.uni_uj = 97;
-    } else {
-        self.uni_uj -= 1;
-    }
-
-    self.uni_c -= self.uni_cd;
-    if self.uni_c < 0.0 {
-        self.uni_c += self.uni_cm;
+        self.uni_c -= self.uni_cd;
+        if self.uni_c < 0.0 {
+            self.uni_c += self.uni_cm;
+        }
+    
+        luni -= self.uni_c;
+        if luni < 0.0 {
+            luni += 1.0;
+        }
+        luni
     }
 
-    luni -= self.uni_c;
-    if luni < 0.0 {
-        luni += 1.0;
-    }
-    luni
-}
-
-// Initialises the random values array using four seeds.
-    pub fn rstart(&mut self, i: i32, j: i32, k: i32, l: i32) {
-        let mut i = i;
-        let mut j = j;
-        let mut k = k;
-        let mut l = l;
+    /// Initialises the random values array using four seeds.
+    ///
+    /// # Parameters
+    ///
+    /// - `i`, `j`, `k`, `l`: The seed values used for initialisation.
+    pub fn rstart(&mut self, mut i: i32, mut j: i32, mut k: i32, mut l: i32) {
         for ii in 1..=97 {
             let mut s = 0.0;
             let mut t = 0.5;
-            for _jj in 1..=24 {
+            for _ in 1..=24 {
                 let m = ((i * j % 179) * k) % 179;
                 i = j;
                 j = k;
@@ -112,7 +132,7 @@ pub fn uni(&mut self) -> f32 {
             }
             self.uni_u[ii] = s;
         }
-// Set fixed correction values
+        // Set fixed correction values.
         self.uni_c = 362436.0 / 16777216.0;
         self.uni_cd = 7654321.0 / 16777216.0;
         self.uni_cm = 16777213.0 / 16777216.0;
@@ -120,7 +140,11 @@ pub fn uni(&mut self) -> f32 {
         self.uni_uj = 33;
     }
 
-// Validates and decomposes a single seed into four seeds, then initialises the random values array.
+    /// Validates and decomposes a single seed into four seeds, then initialises the random values array.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the seed (`ijkl`) is out of range or if the generated seeds are invalid.
     pub fn rinit(&mut self, ijkl: i32) {
         if ijkl < 0 || ijkl > 900_000_000 {
             panic!("rinit: ijkl = {} -- out of range", ijkl);
@@ -154,19 +178,22 @@ pub fn uni(&mut self) -> f32 {
 }
 
 #[cfg(test)]
-// This test should pass with the seed 170 giving a random number of 0.68753344
 mod tests {
     use super::MarsagliaUniRng;
 
+    /// This test should pass with the seed 170 producing a random number of 0.68753344.
     #[test]
     fn test_rng_output() {
         let mut rng = MarsagliaUniRng::new();
         rng.rinit(170);
         let random_value = rng.uni();
-        // Using a tolerance to account for floating-point precision issues
         let expected = 0.68753344;
         let tolerance = 1e-6;
-        assert!((random_value - expected).abs() < tolerance, 
-                "Expected {}, got {}", expected, random_value);
+        assert!(
+            (random_value - expected).abs() < tolerance,
+            "Expected {}, got {}",
+            expected,
+            random_value
+        );
     }
 }
