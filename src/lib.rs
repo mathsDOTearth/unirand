@@ -15,7 +15,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unirand = "0.1.0"
+//! unirand = "0.1.1"
 //! ```
 //!
 //! Then, you can initialise and use the RNG in your project as follows:
