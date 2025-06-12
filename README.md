@@ -7,7 +7,7 @@ published in Statistics & Probability Letters Volume 9, Issue 1, January 1990, P
 https://www.sciencedirect.com/science/article/abs/pii/016771529090092L?via%3Dihub
 
 # Change Log
-## version 0.1.0
+## version 0.1.1
 
 corrected code to pass `cargo clippy`  
 added out of range tests  
