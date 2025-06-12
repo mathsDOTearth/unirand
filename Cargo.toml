@@ -6,5 +6,9 @@ edition = "2021"
 description = "A Marsaglia's universal random number generator."
 license = "MIT"
 repository = "https://github.com/mathsDOTearth/unirand"
+documentation = "https://docs.rs/unirand"
+readme = "README.md"
+keywords = ["random", "rng", "marsaglia", "uniform", "monte-carlo"]
+categories = ["algorithms", "science", "mathematics"]
 
 [dependencies]
