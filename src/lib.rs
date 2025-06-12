@@ -21,13 +21,11 @@
 //! Then, you can initialise and use the RNG in your project as follows:
 //!
 //! ```rust
-//! use unirand::MarsagliaUniRng;
-//!
-//! fn main() {
+//!     use unirand::MarsagliaUniRng;
+
 //!     let mut rng = MarsagliaUniRng::new();
 //!     rng.rinit(170);
 //!     println!("Random number: {}", rng.uni());
-//! }
 //! ```
 //!
 //! ## Further Information
@@ -44,6 +42,12 @@ pub struct MarsagliaUniRng {
     uni_cm: f32,         // Correction modulus.
     uni_ui: usize,       // Current position in the random values array.
     uni_uj: usize,       // Second index used for generating new numbers.
+}
+
+impl Default for MarsagliaUniRng {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MarsagliaUniRng {
@@ -146,8 +150,8 @@ impl MarsagliaUniRng {
     ///
     /// Panics if the seed (`ijkl`) is out of range or if the generated seeds are invalid.
     pub fn rinit(&mut self, ijkl: i32) {
-        if ijkl < 0 || ijkl > 900_000_000 {
-            panic!("rinit: ijkl = {} -- out of range", ijkl);
+        if !(0..=900_000_000).contains(&ijkl) {
+            panic!("rinit: ijkl = {ijkl} -- out of range");
         }
 
         let ij = ijkl / 30082;
@@ -157,17 +161,17 @@ impl MarsagliaUniRng {
         let k = ((kl / 169) % 178) + 1;
         let l = kl % 169;
 
-        if i <= 0 || i > 178 {
-            panic!("rinit: i = {} -- out of range", i);
+        if !(1..=178).contains(&i) {
+            panic!("rinit: i = {i} -- out of range");
         }
-        if j <= 0 || j > 178 {
-            panic!("rinit: j = {} -- out of range", j);
+        if !(2..=178).contains(&j) {
+            panic!("rinit: j = {j} -- out of range");
         }
-        if k <= 0 || k > 178 {
-            panic!("rinit: k = {} -- out of range", k);
+        if !(1..=178).contains(&k) {
+            panic!("rinit: k = {k} -- out of range");
         }
-        if l < 0 || l > 168 {
-            panic!("rinit: l = {} -- out of range", l);
+        if !(0..=168).contains(&l) {
+            panic!("rinit: l = {l} -- out of range");
         }
         if i == 1 && j == 1 && k == 1 {
             panic!("rinit: 1 1 1 not allowed for 1st 3 seeds");
@@ -181,7 +185,7 @@ impl MarsagliaUniRng {
 mod tests {
     use super::MarsagliaUniRng;
 
-    /// This test should pass with the seed 170 producing a random number of 0.68753344.
+    /// This test checks that a known valid seed produces the expected output.
     #[test]
     fn test_rng_output() {
         let mut rng = MarsagliaUniRng::new();
@@ -196,4 +200,20 @@ mod tests {
             random_value
         );
     }
+
+    /// This test verifies that out-of-range seeds cause expected panics.
+    #[test]
+    #[should_panic(expected = "rinit: ijkl = -1 -- out of range")]
+    fn test_rinit_panics_low_seed() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(-1); // Below valid range
+    }
+
+    #[test]
+    #[should_panic(expected = "rinit: ijkl = 900000001 -- out of range")]
+    fn test_rinit_panics_high_seed() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(900_000_001); // Above valid range
+    }
 }
+
