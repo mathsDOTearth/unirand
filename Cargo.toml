@@ -1,6 +1,6 @@
 [package]
 name = "unirand"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["R Neale mathsDOTearth"]
 edition = "2021"
 description = "A Marsaglia's universal random number generator."
@@ -8,7 +8,8 @@ license = "MIT"
 repository = "https://github.com/mathsDOTearth/unirand"
 documentation = "https://docs.rs/unirand"
 readme = "README.md"
-keywords = ["random", "rng", "marsaglia", "uniform", "monte-carlo"]
+keywords = ["random", "rng", "marsaglia", "uniform", "random number generator"]
 categories = ["algorithms", "science", "mathematics"]
 
 [dependencies]
+
