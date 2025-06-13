@@ -15,6 +15,7 @@ This random number generator is probably not suitable for use in Cryptography or
 application as it has not been rigorously tested with that use in mind.
 
 # Usage Example
+`Cargo.toml`  
 ```toml
 [dependencies]
 unirand = "0.1.2"
@@ -36,9 +37,9 @@ fn main() {
 
 # Change Log
 ## version 0.1.2
-Corrected code comments and documentation
-Added more documentation
-Added more tests
+Corrected code comments and documentation  
+Added more documentation  
+Added more tests  
 
 ## version 0.1.1
 Corrected code to pass `cargo clippy`  
