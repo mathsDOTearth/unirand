@@ -15,7 +15,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unirand = "0.1.1"
+//! unirand = "0.1.2"
 //! ```
 //!
 //! Then, you can initialise and use the RNG in your project as follows:
@@ -215,5 +215,31 @@ mod tests {
         let mut rng = MarsagliaUniRng::new();
         rng.rinit(900_000_001); // Above valid range
     }
-}
 
+    /// This is a Statistical Quality Test (SQT) to ensure the RNG produces a uniform distribution.
+    #[test]
+    fn test_rng_statistics() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(170);
+        let n = 10_000;
+        let sum: f32 = (0..n).map(|_| rng.uni()).sum();
+        let mean = sum / n as f32;
+        assert!(
+            (mean - 0.5).abs() < 0.01,
+            "Mean out of expected range: {}",
+            mean
+        );
+    }
+
+    /// This test checks for reproducibility with repeated initialisations using the same seed.
+    #[test]
+    fn test_rng_reproducibility() {
+        let mut rng1 = MarsagliaUniRng::new();
+        let mut rng2 = MarsagliaUniRng::new();
+        rng1.rinit(42);
+        rng2.rinit(42);
+        for _ in 0..100 {
+            assert!((rng1.uni() - rng2.uni()).abs() < 1e-7);
+        }
+    }
+}
