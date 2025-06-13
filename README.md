@@ -37,6 +37,8 @@ fn main() {
 # Change Log
 ## version 0.1.2
 Corrected code comments and documentation
+Added more documentation
+Added more tests
 
 ## version 0.1.1
 Corrected code to pass `cargo clippy`  
