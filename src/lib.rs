@@ -15,7 +15,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unirand = "0.1.2"
+//! unirand = "0.1.3"
 //! ```
 //!
 //! Then, you can initialise and use the RNG in your project as follows:
@@ -91,12 +91,13 @@ impl MarsagliaUniRng {
         self.uni_u[self.uni_ui] = luni;
         
         // Adjust indices for the next random number generation.
-        if self.uni_ui == 0 {
+        // Wraps at 1 -> 97, mirroring the Fortran: I97 = I97 - 1; IF (I97 .EQ. 0) I97 = 97.
+        if self.uni_ui == 1 {
             self.uni_ui = 97;
         } else {
             self.uni_ui -= 1;
         }
-        if self.uni_uj == 0 {
+        if self.uni_uj == 1 {
             self.uni_uj = 97;
         } else {
             self.uni_uj -= 1;
@@ -241,5 +242,88 @@ mod tests {
         for _ in 0..100 {
             assert!((rng1.uni() - rng2.uni()).abs() < 1e-7);
         }
+    }
+
+    /// Verifies that all generated values lie within [0.0, 1.0).
+    #[test]
+    fn test_rng_output_range() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(170);
+        for _ in 0..10_000 {
+            let v = rng.uni();
+            assert!(v >= 0.0 && v < 1.0, "Value out of range: {}", v);
+        }
+    }
+
+    /// Regression test for the index wrap-around bug: generates enough values to exercise
+    /// both the uni_ui cycle (wraps every 97 calls) and the uni_uj first wrap (after 33 calls),
+    /// confirming all outputs remain in range across wrap boundaries.
+    #[test]
+    fn test_rng_wrap_around() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(170);
+        // 200 values covers two full uni_ui cycles and multiple uni_uj wraps.
+        for i in 0..200 {
+            let v = rng.uni();
+            assert!(v >= 0.0 && v < 1.0, "Value out of range at step {}: {}", i, v);
+        }
+    }
+
+    /// Verifies that the minimum valid seed (0) and maximum valid seed (900_000_000)
+    /// are accepted and produce in-range output.
+    #[test]
+    fn test_rng_boundary_seeds() {
+        for &seed in &[0, 900_000_000] {
+            let mut rng = MarsagliaUniRng::new();
+            rng.rinit(seed);
+            let v = rng.uni();
+            assert!(v >= 0.0 && v < 1.0, "Seed {} produced out-of-range value: {}", seed, v);
+        }
+    }
+
+    /// Verifies that re-initialising with the same seed resets state and yields an
+    /// identical sequence to a freshly constructed instance.
+    #[test]
+    fn test_rng_reinitialisation() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(42);
+        let first_run: Vec<f32> = (0..50).map(|_| rng.uni()).collect();
+
+        // Re-seed the same instance and confirm the sequence is identical.
+        rng.rinit(42);
+        let second_run: Vec<f32> = (0..50).map(|_| rng.uni()).collect();
+
+        for (i, (a, b)) in first_run.iter().zip(second_run.iter()).enumerate() {
+            assert!((a - b).abs() < 1e-7, "Mismatch at step {}: {} vs {}", i, a, b);
+        }
+    }
+
+    /// Verifies that distinct seeds produce distinct sequences.
+    #[test]
+    fn test_rng_distinct_seeds_diverge() {
+        let mut rng1 = MarsagliaUniRng::new();
+        let mut rng2 = MarsagliaUniRng::new();
+        rng1.rinit(1);
+        rng2.rinit(2);
+        let any_differ = (0..50).any(|_| (rng1.uni() - rng2.uni()).abs() > 1e-7);
+        assert!(any_differ, "Different seeds produced identical sequences");
+    }
+
+    /// Checks that the variance of the output is close to 1/12, as expected for a
+    /// uniform distribution on [0, 1).
+    #[test]
+    fn test_rng_variance() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(170);
+        let n = 10_000;
+        let values: Vec<f32> = (0..n).map(|_| rng.uni()).collect();
+        let mean = values.iter().sum::<f32>() / n as f32;
+        let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n as f32;
+        let expected_variance: f32 = 1.0 / 12.0;
+        assert!(
+            (variance - expected_variance).abs() < 0.005,
+            "Variance out of expected range: {}",
+            variance
+        );
     }
 }
