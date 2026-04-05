@@ -18,7 +18,7 @@ application as it has not been rigorously tested with that use in mind.
 `Cargo.toml`  
 ```toml
 [dependencies]
-unirand = "0.1.2"
+unirand = "0.1.3"
 ```
 
 Then, you can initialise and use the RNG in your project as follows:
@@ -36,6 +36,10 @@ fn main() {
 ```
 
 # Change Log
+## version 0.1.3
+Fixed index wrap-around bug in `uni()`: indices now cycle over 1..=97, preventing access to `uni_u[0]` which was never seeded and held the constant 0.0  
+Added tests: output range, wrap-around regression, boundary seeds, re-initialisation, distinct seed divergence, variance
+
 ## version 0.1.2
 Corrected code comments and documentation  
 Added more documentation  
