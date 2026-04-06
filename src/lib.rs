@@ -42,6 +42,7 @@ pub struct MarsagliaUniRng {
     uni_cm: f32,         // Correction modulus.
     uni_ui: usize,       // Current position in the random values array.
     uni_uj: usize,       // Second index used for generating new numbers.
+    initialised: bool,   // Set to true once rstart has been called via rinit.
 }
 
 impl Default for MarsagliaUniRng {
@@ -68,10 +69,15 @@ impl MarsagliaUniRng {
             uni_cm: 0.0,
             uni_ui: 0,
             uni_uj: 0,
+            initialised: false,
         }
     }
 
-    /// Generates a new random float value between 0 and 1.
+    /// Generates a new random float value in [0, 1).
+    ///
+    /// # Panics
+    ///
+    /// Panics if called before `rinit`.
     ///
     /// # Example
     ///
@@ -84,6 +90,9 @@ impl MarsagliaUniRng {
     /// println!("Random number: {}", number);
     /// ```
     pub fn uni(&mut self) -> f32 {
+        if !self.initialised {
+            panic!("uni: called before rinit -- generator not initialised");
+        }
         let mut luni = self.uni_u[self.uni_ui] - self.uni_u[self.uni_uj];
         if luni < 0.0 {
             luni += 1.0;
@@ -116,11 +125,12 @@ impl MarsagliaUniRng {
     }
 
     /// Initialises the random values array using four seeds.
+    /// Called internally by `rinit` after seed validation.
     ///
     /// # Parameters
     ///
-    /// - `i`, `j`, `k`, `l`: The seed values used for initialisation.
-    pub fn rstart(&mut self, mut i: i32, mut j: i32, mut k: i32, mut l: i32) {
+    /// - `i`, `j`, `k`, `l`: Pre-validated seed values.
+    fn rstart(&mut self, mut i: i32, mut j: i32, mut k: i32, mut l: i32) {
         for ii in 1..=97 {
             let mut s = 0.0;
             let mut t = 0.5;
@@ -143,13 +153,14 @@ impl MarsagliaUniRng {
         self.uni_cm = 16777213.0 / 16777216.0;
         self.uni_ui = 97;
         self.uni_uj = 33;
+        self.initialised = true;
     }
 
     /// Validates and decomposes a single seed into four seeds, then initialises the random values array.
     ///
     /// # Panics
     ///
-    /// Panics if the seed (`ijkl`) is out of range or if the generated seeds are invalid.
+    /// Panics if `ijkl` is outside the valid range `0..=900_000_000`.
     pub fn rinit(&mut self, ijkl: i32) {
         if !(0..=900_000_000).contains(&ijkl) {
             panic!("rinit: ijkl = {ijkl} -- out of range");
@@ -162,21 +173,12 @@ impl MarsagliaUniRng {
         let k = ((kl / 169) % 178) + 1;
         let l = kl % 169;
 
-        if !(1..=178).contains(&i) {
-            panic!("rinit: i = {i} -- out of range");
-        }
-        if !(2..=178).contains(&j) {
-            panic!("rinit: j = {j} -- out of range");
-        }
-        if !(1..=178).contains(&k) {
-            panic!("rinit: k = {k} -- out of range");
-        }
-        if !(0..=168).contains(&l) {
-            panic!("rinit: l = {l} -- out of range");
-        }
-        if i == 1 && j == 1 && k == 1 {
-            panic!("rinit: 1 1 1 not allowed for 1st 3 seeds");
-        }
+        // Ranges are guaranteed by the decomposition arithmetic above;
+        // verified here in debug builds only.
+        debug_assert!((2..=178).contains(&i), "i = {i} out of range");
+        debug_assert!((2..=178).contains(&j), "j = {j} out of range");
+        debug_assert!((1..=178).contains(&k), "k = {k} out of range");
+        debug_assert!((0..=168).contains(&l), "l = {l} out of range");
 
         self.rstart(i, j, k, l);
     }
@@ -242,6 +244,14 @@ mod tests {
         for _ in 0..100 {
             assert!((rng1.uni() - rng2.uni()).abs() < 1e-7);
         }
+    }
+
+    /// Verifies that calling uni() before rinit panics with a clear message.
+    #[test]
+    #[should_panic(expected = "uni: called before rinit -- generator not initialised")]
+    fn test_uni_before_rinit() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.uni();
     }
 
     /// Verifies that all generated values lie within [0.0, 1.0).
