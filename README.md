@@ -39,6 +39,9 @@ fn main() {
 ## version 0.1.3
 Fixed index wrap-around bug in `uni()`: indices now cycle over 1..=97, preventing access to `uni_u[0]` which was never seeded and held the constant 0.0  
 Added tests: output range, wrap-around regression, boundary seeds, re-initialisation, distinct seed divergence, variance
+rstart no longer public  
+Dead code in rinit removed  
+Add an initialised: bool field, set it to true in rstart, and have uni() panic with a clear message if called uninitialised  
 
 ## version 0.1.2
 Corrected code comments and documentation  
