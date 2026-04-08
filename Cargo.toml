@@ -1,6 +1,6 @@
 [package]
 name = "unirand"
-version = "0.1.4"
+version = "0.2.0"
 authors = ["R Neale mathsDOTearth"]
 edition = "2021"
 description = "A Marsaglia's universal random number generator."
@@ -12,4 +12,4 @@ keywords = ["random", "rng", "marsaglia", "uniform", "randomnumber"]
 categories = ["algorithms", "science", "mathematics"]
 
 [dependencies]
-
+rand_core = { version = "0.9", default-features = false }
