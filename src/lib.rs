@@ -15,14 +15,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unirand = "0.1.3"
+//! unirand = "0.2.0"
 //! ```
 //!
 //! Then, you can initialise and use the RNG in your project as follows:
 //!
 //! ```rust
 //!     use unirand::MarsagliaUniRng;
-
+//!
 //!     let mut rng = MarsagliaUniRng::new();
 //!     rng.rinit(170);
 //!     println!("Random number: {}", rng.uni());
@@ -184,6 +184,40 @@ impl MarsagliaUniRng {
     }
 }
 
+/// Implements `RngCore` from the `rand_core` crate, enabling use with the broader
+/// Rust random number ecosystem (distributions, shuffling, sampling, etc.).
+///
+/// Note: the underlying generator produces f32 values with 24-bit mantissa precision.
+/// `next_u32` therefore has full entropy in the upper 24 bits only; the lower 8 bits
+/// are always zero. `next_u64` combines two `next_u32` calls and carries the same
+/// limitation. The generator must be initialised with `rinit` before use.
+impl rand_core::RngCore for MarsagliaUniRng {
+    fn next_u32(&mut self) -> u32 {
+        // Scale [0.0, 1.0) to [0, 2^32) and truncate; lower 8 bits are always
+        // zero due to f32's 24-bit mantissa.
+        (self.uni() * 4_294_967_296.0_f32) as u32
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        rand_core::impls::next_u64_via_u32(self)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        rand_core::impls::fill_bytes_via_next(self, dest);
+    }
+}
+
+/// Produces an infinite sequence of uniform random values in [0, 1).
+/// The generator must be initialised with `rinit` before iteration begins;
+/// calling `next` on an uninitialised generator will panic.
+impl Iterator for MarsagliaUniRng {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<f32> {
+        Some(self.uni())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::MarsagliaUniRng;
@@ -244,6 +278,84 @@ mod tests {
         for _ in 0..100 {
             assert!((rng1.uni() - rng2.uni()).abs() < 1e-7);
         }
+    }
+
+    /// Verifies that next_u32 produces values consistent with the underlying uni() output.
+    #[test]
+    fn test_next_u32_matches_uni() {
+        use rand_core::RngCore;
+        let mut rng_u32 = MarsagliaUniRng::new();
+        let mut rng_uni = MarsagliaUniRng::new();
+        rng_u32.rinit(42);
+        rng_uni.rinit(42);
+        for _ in 0..100 {
+            let u32_val = rng_u32.next_u32();
+            let uni_val = (rng_uni.uni() * 4_294_967_296.0_f32) as u32;
+            assert_eq!(u32_val, uni_val);
+        }
+    }
+
+    /// Verifies that next_u64 produces a valid u64 from two successive next_u32 calls.
+    #[test]
+    fn test_next_u64_consistent() {
+        use rand_core::RngCore;
+        let mut rng1 = MarsagliaUniRng::new();
+        let mut rng2 = MarsagliaUniRng::new();
+        rng1.rinit(42);
+        rng2.rinit(42);
+        for _ in 0..50 {
+            let u64_val = rng1.next_u64();
+            // next_u64_via_u32 places the first call in the low bits, second in high bits.
+            let lo = rng2.next_u32() as u64;
+            let hi = rng2.next_u32() as u64;
+            assert_eq!(u64_val, (hi << 32) | lo);
+        }
+    }
+
+    /// Verifies that fill_bytes fills a buffer without panicking and produces
+    /// consistent output across identical seeds.
+    #[test]
+    fn test_fill_bytes_reproducible() {
+        use rand_core::RngCore;
+        let mut rng1 = MarsagliaUniRng::new();
+        let mut rng2 = MarsagliaUniRng::new();
+        rng1.rinit(42);
+        rng2.rinit(42);
+        let mut buf1 = [0u8; 32];
+        let mut buf2 = [0u8; 32];
+        rng1.fill_bytes(&mut buf1);
+        rng2.fill_bytes(&mut buf2);
+        assert_eq!(buf1, buf2);
+    }
+
+    /// Verifies that the iterator produces the same sequence as direct uni() calls.
+    #[test]
+    fn test_iterator_matches_uni() {
+        let mut rng_direct = MarsagliaUniRng::new();
+        let mut rng_iter = MarsagliaUniRng::new();
+        rng_direct.rinit(42);
+        rng_iter.rinit(42);
+        for (iter_val, direct_val) in rng_iter.take(100).zip((0..100).map(|_| rng_direct.uni())) {
+            assert!((iter_val - direct_val).abs() < 1e-7);
+        }
+    }
+
+    /// Verifies that values produced via the iterator lie within [0.0, 1.0).
+    #[test]
+    fn test_iterator_output_range() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.rinit(170);
+        for (i, v) in rng.take(1_000).enumerate() {
+            assert!(v >= 0.0 && v < 1.0, "Iterator value out of range at step {}: {}", i, v);
+        }
+    }
+
+    /// Verifies that iterating an uninitialised generator panics with a clear message.
+    #[test]
+    #[should_panic(expected = "uni: called before rinit -- generator not initialised")]
+    fn test_iterator_before_rinit() {
+        let mut rng = MarsagliaUniRng::new();
+        rng.next();
     }
 
     /// Verifies that calling uni() before rinit panics with a clear message.
