@@ -9,6 +9,7 @@ license = "MIT"
 repository = "https://github.com/mathsDOTearth/unirand"
 documentation = "https://docs.rs/unirand"
 readme = "README.md"
+exclude = [".github"]
 keywords = ["random", "rng", "marsaglia", "uniform", "no-std"]
 categories = ["algorithms", "science", "mathematics", "no-std"]
 
