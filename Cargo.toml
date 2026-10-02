@@ -1,15 +1,19 @@
 [package]
 name = "unirand"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["R Neale mathsDOTearth"]
-edition = "2021"
-description = "A Marsaglia's universal random number generator."
+edition = "2024"
+rust-version = "1.85"
+description = "Marsaglia's universal random number generator."
 license = "MIT"
 repository = "https://github.com/mathsDOTearth/unirand"
 documentation = "https://docs.rs/unirand"
 readme = "README.md"
-keywords = ["random", "rng", "marsaglia", "uniform", "randomnumber"]
-categories = ["algorithms", "science", "mathematics"]
+keywords = ["random", "rng", "marsaglia", "uniform", "no-std"]
+categories = ["algorithms", "science", "mathematics", "no-std"]
 
 [dependencies]
-rand_core = { version = "0.9", default-features = false }
+rand_core = { version = "0.10", default-features = false }
+
+[dev-dependencies]
+rand = "0.10"
