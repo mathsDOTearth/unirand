@@ -22,7 +22,7 @@ unpredictability or resistance to state recovery.
 `Cargo.toml`  
 ```toml
 [dependencies]
-unirand = "0.3.0"
+unirand = "0.3.1"
 ```
 
 ## Basic usage
@@ -43,6 +43,35 @@ fn main() {
 `MarsagliaUniRng::try_new` returns a `Result` instead of panicking on an
 out-of-range seed. `uni_u24()` returns the same values as 24-bit integers
 (`uni() * 2^24`).
+
+## Floating-point output
+
+`uni()` returns each value of the paper as an `f32`, and `uni_f64()` returns
+the same value converted exactly to `f64`. Every value lies in [0, 1) and is an
+exact multiple of 2^-24, so an `f64` obtained this way has 24-bit resolution.
+`0.0` occurs with probability 2^-24 per value and `1.0` never occurs; where an
+open lower bound is required, as for `ln(u)`, `1.0 - u` lies in (0, 1].
+
+```rust
+use unirand::MarsagliaUniRng;
+
+fn main() {
+    let mut rng = MarsagliaUniRng::new(170);
+
+    let single: f32 = rng.uni();
+    let double: f64 = rng.uni_f64();
+    println!("f32: {single}, f64: {double}");
+
+    // Many f64 values via the iterator.
+    let many: Vec<f64> = rng.by_ref().take(1_000).map(f64::from).collect();
+    println!("Collected {} values", many.len());
+}
+```
+
+The floating-point methods of `rand`, such as `random::<f32>()` and
+`random::<f64>()`, consume two or three values of the generator per result.
+Their output is uniform but is not the sequence defined in the paper; use
+`uni()` or `uni_f64()` where that sequence is required.
 
 ## Seeding with the four seeds of the paper
 
@@ -105,7 +134,7 @@ shuffling, and sampling:
 `Cargo.toml`
 ```toml
 [dependencies]
-unirand = "0.3.0"
+unirand = "0.3.1"
 rand = "0.10"
 ```
 
@@ -136,10 +165,14 @@ Each value of the underlying generator carries 24 random bits. `next_u32`
 combines 24 bits from one value with 8 from the next, `next_u64` combines
 24 + 24 + 16 bits from three values, and `fill_bytes` takes 3 bytes per value,
 so every output bit is random. The `rand_core` output stream is therefore not a
-direct transcription of `uni()`; use `uni()` or `uni_u24()` where the sequence
-defined in the paper is required.
+direct transcription of `uni()`; use `uni()`, `uni_f64()` or `uni_u24()` where
+the sequence defined in the paper is required.
 
 # Change Log
+
+## version 0.3.1
+Added `uni_f64()`, returning the value of `uni()` converted exactly to `f64`  
+Documented floating-point output: `f32` and `f64` usage, 24-bit resolution, the possibility of `0.0`, and the distinction from `rand`'s floating-point methods  
 
 ## version 0.3.0
 This release contains breaking API changes. The sequence produced by `uni()` is

@@ -20,7 +20,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unirand = "0.3.0"
+//! unirand = "0.3.1"
 //! ```
 //!
 //! ```rust
@@ -41,6 +41,30 @@
 //!   directly.
 //!
 //! The single seed `1802 * 30082 + 9373` is equivalent to the four seeds `(12, 34, 56, 78)`.
+//!
+//! ## Floating-point output
+//!
+//! [`MarsagliaUniRng::uni`] returns each value of the paper as an `f32`, and
+//! [`MarsagliaUniRng::uni_f64`] returns the same value converted exactly to `f64`. Every
+//! value lies in [0, 1) and is an exact multiple of 2^-24, so an `f64` obtained this way
+//! has 24-bit resolution. `0.0` occurs with probability 2^-24 per value and `1.0` never
+//! occurs; where an open lower bound is required, as for `ln(u)`, `1.0 - u` lies in (0, 1].
+//!
+//! ```rust
+//! use unirand::MarsagliaUniRng;
+//!
+//! let mut rng = MarsagliaUniRng::new(170);
+//! let single: f32 = rng.uni();
+//! let double: f64 = rng.uni_f64();
+//! let many: Vec<f64> = rng.by_ref().take(1_000).map(f64::from).collect();
+//! assert!((0.0..1.0).contains(&single) && (0.0..1.0).contains(&double));
+//! assert!(many.iter().all(|u| (0.0..1.0).contains(u)));
+//! ```
+//!
+//! The floating-point methods of `rand`, such as `random::<f32>()` and `random::<f64>()`,
+//! draw on the `rand_core` interface, which consumes two or three values of the generator
+//! per result. Their output is uniform but is not the sequence defined in the paper; use
+//! `uni` or `uni_f64` where that sequence is required.
 
 #![no_std]
 
@@ -261,7 +285,7 @@ impl MarsagliaUniRng {
     }
 
     /// Advances the generator and returns the next value in [0, 1). The result is an exact
-    /// multiple of 2^-24.
+    /// multiple of 2^-24; `0.0` may occur, `1.0` cannot.
     ///
     /// # Example
     ///
@@ -276,6 +300,26 @@ impl MarsagliaUniRng {
         // Exact: a 24-bit integer is representable in f32, and scaling by a power of two
         // introduces no rounding.
         self.uni_u24() as f32 * SCALE_24
+    }
+
+    /// Advances the generator and returns the next value in [0, 1) as an `f64`.
+    ///
+    /// The value is identical to that returned by [`uni`](Self::uni), converted exactly to
+    /// `f64`; it remains an exact multiple of 2^-24 and therefore has 24-bit resolution, not
+    /// the 53-bit resolution of the `f64` format. `0.0` may occur, `1.0` cannot.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use unirand::MarsagliaUniRng;
+    ///
+    /// let mut first = MarsagliaUniRng::new(170);
+    /// let mut second = first.clone();
+    /// assert_eq!(first.uni_f64(), f64::from(second.uni()));
+    /// ```
+    #[inline]
+    pub fn uni_f64(&mut self) -> f64 {
+        f64::from(self.uni())
     }
 }
 
@@ -397,6 +441,20 @@ mod tests {
         let mut rng_float = MarsagliaUniRng::new(REFERENCE_SEED);
         for _ in 0..1_000 {
             assert_eq!(rng_int.uni_u24() as f32, rng_float.uni() * 16_777_216.0);
+        }
+    }
+
+    /// `uni_f64` must return the value of `uni` converted exactly, so that multiplying by
+    /// 2^24 recovers the integer form.
+    #[test]
+    fn test_uni_f64_matches_uni() {
+        let mut rng_f64 = MarsagliaUniRng::new(REFERENCE_SEED);
+        let mut rng_f32 = MarsagliaUniRng::new(REFERENCE_SEED);
+        let mut rng_int = MarsagliaUniRng::new(REFERENCE_SEED);
+        for _ in 0..1_000 {
+            let value = rng_f64.uni_f64();
+            assert_eq!(value, f64::from(rng_f32.uni()));
+            assert_eq!(value * 16_777_216.0, f64::from(rng_int.uni_u24()));
         }
     }
 
